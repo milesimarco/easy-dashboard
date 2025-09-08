@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: Easy Dashboard
- * Plugin URI: https://wpgov.it
+ * Plugin URI: https://www.marcomilesi.com
  * Description: Refresh your WordPress dashboard with this new elegant, metro-based one.
  * Author: Marco Milesi
  * Author URI: https://marcomilesi.com
- * Version: 1.5
+ * Version: 1.6
  * License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  * Text Domain: easy-dashboard
  * Domain Path: /languages
