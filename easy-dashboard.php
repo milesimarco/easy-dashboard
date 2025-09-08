@@ -100,14 +100,16 @@ class EasyDashboard {
         if ('admin_page_easy-dashboard' !== $hook && 'settings_page_easy-dashboard-settings' !== $hook) {
             return;
         }
-        
+    // Ensure Dashicons are available on our custom admin page
+    wp_enqueue_style('dashicons');
+
         wp_enqueue_style(
             self::SLUG . '-admin',
             plugin_dir_url(__FILE__) . 'assets/admin-style.css',
             array(),
             self::VERSION
         );
-        
+
         // Inline styles as fallback if CSS file doesn't exist
         $this->add_inline_styles();
     }
@@ -226,6 +228,21 @@ class EasyDashboard {
             margin-bottom: 15px;
             color: ' . $colors['primary'] . ';
             transition: color 0.3s ease;
+            display: inline-block;
+        }
+
+        /* Image icons (when a menu item provides an image URL) */
+        img.<a href="http://playground.local/wp-admin/admin.php?page=telegram_main" class="easy-dashboard-box small">
+                    <img src="" class="easy-dashboard-icon" alt="Telegram">
+                    <p class="easy-dashboard-label">Telegram</p>
+                </a> {
+            max-width: 48px;
+            max-height: 48px;
+            width: 48px;
+            height: 48px;
+            display: block;
+            margin: 0 auto 15px;
+            object-fit: contain;
         }
 
         .easy-dashboard-box:hover .easy-dashboard-icon {
@@ -247,6 +264,12 @@ class EasyDashboard {
 
         .easy-dashboard-box.small .easy-dashboard-icon {
             font-size: 32px !important;
+            margin-bottom: 10px;
+        }
+
+        .easy-dashboard-box.small img.easy-dashboard-icon {
+            width: 32px;
+            height: 32px;
             margin-bottom: 10px;
         }
 
@@ -374,7 +397,8 @@ class EasyDashboard {
             }
         }
         ';
-        wp_add_inline_style('wp-admin', $css);
+    // Attach our inline styles to the plugin stylesheet handle so they reliably load
+    wp_add_inline_style(self::SLUG . '-admin', $css);
     }
     
     /**
@@ -484,18 +508,40 @@ class EasyDashboard {
      */
     private function render_menu_box($menu_item, $is_small = false) {
         $url = $this->format_menu_link($menu_item[2]);
-        $icon_class = isset($menu_item[6]) ? $menu_item[6] : 'dashicons-admin-generic';
+        $raw_icon = isset($menu_item[6]) ? $menu_item[6] : '';
         $label = $this->get_menu_label($menu_item);
         $size_class = $is_small ? ' small' : '';
-        
+
+        // Use the WP Dashboard dashicon as the default fallback for missing icons
+        $dashicon_class = 'dashicons-dashboard';
+
+        if (is_string($raw_icon) && $raw_icon !== '') {
+            // Try to find a dashicons class in the string
+            if (preg_match('/(dashicons[-_\w]+)/', $raw_icon, $m)) {
+                $dashicon_class = $m[1];
+            } else {
+                // Treat the raw value as a possible class name (clean it)
+                $clean = preg_replace('/[^A-Za-z0-9_\- ]+/', '', $raw_icon);
+                if (trim($clean) !== '') {
+                    $dashicon_class = trim($clean);
+                }
+            }
+        }
+
+        // Check if dashicon_class contains data:image base64 and reset to dashboard icon
+        if (strpos($dashicon_class, 'base64') !== false) {
+            $dashicon_class = 'dashicons-dashboard';
+        }
+
+        // Always use dashicons class
         printf(
             '<a href="%s" class="easy-dashboard-box%s">
-                <div class="dashicons easy-dashboard-icon %s"></div>
+                <div class="dashicons easy-dashboard-icon %s" aria-hidden="true"></div>
                 <p class="easy-dashboard-label">%s</p>
             </a>',
             esc_url(admin_url($url)),
             esc_attr($size_class),
-            esc_attr($icon_class),
+            esc_attr($dashicon_class),
             esc_html($label)
         );
     }
@@ -504,18 +550,20 @@ class EasyDashboard {
      * Get menu label
      */
     private function get_menu_label($menu_item) {
-        // Only show "Commenti" for Comments and "Plugin" for Plugins
         $slug = $menu_item[2];
-        if ($slug === 'edit-comments.php' || $slug === 'plugins.php') {
-            // Use only the first word (usually the menu title)
-            $label = wp_strip_all_tags($menu_item[0]);
-            // Remove anything after the first space or parenthesis
-            $label = preg_replace('/[\s\(].*$/', '', $label);
-            return $label;
+
+        // Keep friendly fixed labels for Comments and Plugins
+        if ($slug === 'edit-comments.php') {
+            return __('Comments', 'easy-dashboard');
         }
 
-        if ($this->is_custom_post_type_menu($menu_item[2])) {
-            $post_type = $this->get_post_type_from_slug($menu_item[2]);
+        if ($slug === 'plugins.php') {
+            return __('Plugins', 'easy-dashboard');
+        }
+
+        // For custom post types, prefer the post type's plural name
+        if ($this->is_custom_post_type_menu($slug)) {
+            $post_type = $this->get_post_type_from_slug($slug);
             $post_type_object = get_post_type_object($post_type);
 
             if ($post_type_object && isset($post_type_object->labels->name)) {
@@ -523,7 +571,17 @@ class EasyDashboard {
             }
         }
 
-        return wp_strip_all_tags($menu_item[0]);
+        // Default: strip tags and remove notification counts/trailing numbers
+        $label = wp_strip_all_tags($menu_item[0]);
+
+        // Remove patterns like "11 notifications" or "11 notification" (case-insensitive)
+        $label = preg_replace('/\s*\d+\s*notifications?$/i', '', $label);
+
+        // Remove any trailing number left (e.g. "Yoast SEO 11")
+        $label = preg_replace('/\s*\d+$/', '', $label);
+
+        // Trim whitespace and return
+        return trim($label);
     }
     
     /**
