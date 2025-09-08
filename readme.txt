@@ -3,8 +3,8 @@ Contributors: Milmor
 Tags: dashboard, easy, clean, tiny
 Requires at least: 3.6
 Tested up to: 6.9
-Version: 1.5
-Stable tag: 1.5
+Version: 1.6
+Stable tag: 1.6
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -31,6 +31,9 @@ Our plugin is designed to make using WordPress a seamless and enjoyable experien
 2. Website with custom post types
 
 == Changelog ==
+
+= 1.6 2025-09-08 =
+* Improved code and performance
 
 = 1.5 2025-06-09 =
 * Improved code and performance
