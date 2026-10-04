@@ -232,6 +232,16 @@
     display: inline-block;
 }
 
+/* Pending updates notice */
+.ed-updates-notice {
+    margin: 0 0 20px;
+}
+
+.ed-updates-notice .dashicons {
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
 /* Image icons (when a menu item provides an image URL) */
 img.easy-dashboard-icon {
     max-width: 48px;

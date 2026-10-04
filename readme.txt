@@ -3,9 +3,8 @@ Contributors: Milmor
 Tags: dashboard, easy, clean, tiny, panel
 Requires at least: 6.0
 Requires PHP: 7.4
-Tested up to: 7.1
-Version: 2.0
-Stable tag: 2.0
+Tested up to: 7.2
+Stable tag: 2.0.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -73,6 +72,14 @@ Yes. Tiles and quick actions are rendered according to the current user's WordPr
 
 
 == Changelog ==
+
+= 2.0.2 2026-10-04 =
+* Tested up to WordPress 7.2.
+* Fixed: "Settings saved" notice not shown.
+* Fixed: SVG and image menu icons on tiles.
+* Fixed: links to plugin pages with a file path slug.
+* Fixed: PHP 8.1+ deprecation notices.
+* Minor improvements.
 
 = 2.0.1 2026-08-31 =
 * Reworked the welcome page layout and branding header.

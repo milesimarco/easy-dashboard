@@ -58,6 +58,12 @@
             }
         }
 
+        // Show the shortcut the command palette actually listens to.
+        var kbd = document.getElementById('ed-search-btn-kbd');
+        if (kbd && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)) {
+            kbd.textContent = String.fromCharCode(0x2318) + 'K';
+        }
+
         button.addEventListener('click', function () {
             var store = getCommandsDispatch();
 

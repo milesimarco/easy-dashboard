@@ -5,12 +5,11 @@
  * Description: Refresh your WordPress dashboard with this new elegant, metro-based one.
  * Author: Marco Milesi
  * Author URI: https://marcomilesi.com
- * Version: 2.0.1
+ * Version: 2.0.2
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  * Text Domain: easy-dashboard
- * Domain Path: /languages
  */
 
 // Prevent direct access
@@ -26,7 +25,7 @@ class EasyDashboard {
     /**
      * Plugin version
      */
-    const VERSION = '2.0.1';
+    const VERSION = '2.0.2';
 
     /**
      * Plugin slug
@@ -47,7 +46,6 @@ class EasyDashboard {
      * Constructor
      */
     public function __construct() {
-        add_action('init', array($this, 'init'));
         add_action('admin_menu', array($this, 'register_admin_menu'));
         add_action('load-index.php', array($this, 'maybe_redirect_dashboard'));
         add_action('admin_init', array($this, 'register_settings'));
@@ -55,19 +53,13 @@ class EasyDashboard {
     }
 
     /**
-     * Initialize plugin
-     */
-    public function init() {
-        load_plugin_textdomain(self::SLUG, false, dirname(plugin_basename(__FILE__)) . '/languages');
-    }
-
-    /**
      * Register admin menu
      */
     public function register_admin_menu() {
-        // Main dashboard page (hidden from menu)
+        // Main dashboard page (hidden from menu). An empty parent slug keeps it
+        // out of the menu without the PHP 8.1+ deprecation notices of null.
         add_submenu_page(
-            null,
+            '',
             __('Dashboard', 'easy-dashboard'),
             __('Dashboard', 'easy-dashboard'),
             'read',
@@ -83,7 +75,14 @@ class EasyDashboard {
      * default screen and its widgets always stay reachable.
      */
     public function maybe_redirect_dashboard() {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only flag.
         if (isset($_GET[self::CLASSIC_ARG]) || !current_user_can('read')) {
+            return;
+        }
+
+        // The welcome page only exists in the site admin, not in the network
+        // or user admin, which share the index.php screen.
+        if (is_network_admin() || is_user_admin()) {
             return;
         }
 
@@ -173,7 +172,7 @@ class EasyDashboard {
      */
     public function render_dashboard() {
         if (!current_user_can('read')) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'easy-dashboard'));
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'easy-dashboard'));
         }
 
         $current_user = wp_get_current_user();
@@ -194,6 +193,7 @@ class EasyDashboard {
         echo '</div>';
         echo '<div class="easy-dashboard-brand-copy">';
         echo '<p class="easy-dashboard-eyebrow">' . esc_html(get_bloginfo('name')) . '</p>';
+        /* translators: %s: Display name of the current user. */
         echo '<h1>' . sprintf(esc_html__('Hello, %s!', 'easy-dashboard'), esc_html($display_name)) . '</h1>';
 
         if (!empty($tagline)) {
@@ -206,7 +206,7 @@ class EasyDashboard {
         echo '<button type="button" class="easy-dashboard-search-btn" id="ed-search-btn" aria-label="' . esc_attr__('Search') . '">';
         echo '<span class="dashicons dashicons-search" aria-hidden="true"></span>';
         echo '<span id="ed-search-btn-label">' . esc_html__('Search commands and settings') . '</span>';
-        echo '<span class="ed-kbd">Ctrl K</span>';
+        echo '<span class="ed-kbd" id="ed-search-btn-kbd">Ctrl K</span>';
         echo '</button>';
 
         if (current_user_can('manage_options')) {
@@ -222,7 +222,9 @@ class EasyDashboard {
         echo '</div>';
 
         if (current_user_can('manage_options')) {
-            settings_errors('easy_dashboard_options');
+            // options.php stores the "Settings saved." notice under the
+            // "general" setting, so show every pending settings message.
+            settings_errors();
             echo '<div class="ed-settings-panel" id="ed-settings-panel" aria-hidden="true">';
             echo '<div class="ed-settings-panel-header">';
             echo '<div class="ed-settings-panel-copy">';
@@ -328,6 +330,7 @@ class EasyDashboard {
                     '<a href="%s">%s</a>',
                     esc_url(admin_url('plugins.php?plugin_status=upgrade')),
                     sprintf(
+                        /* translators: %d: Number of plugins with a pending update. */
                         _n('%d plugin', '%d plugins', $plugin_count, 'easy-dashboard'),
                         $plugin_count
                     )
@@ -344,6 +347,7 @@ class EasyDashboard {
                     '<a href="%s">%s</a>',
                     esc_url(admin_url('themes.php')),
                     sprintf(
+                        /* translators: %d: Number of themes with a pending update. */
                         _n('%d theme', '%d themes', $theme_count, 'easy-dashboard'),
                         $theme_count
                     )
@@ -356,8 +360,8 @@ class EasyDashboard {
         }
 
         printf(
-            '<div class="notice notice-warning inline" style="margin-bottom:20px;">
-                <p><span class="dashicons dashicons-update" aria-hidden="true" style="vertical-align:middle;margin-right:6px;"></span>%s %s</p>
+            '<div class="notice notice-warning inline ed-updates-notice">
+                <p><span class="dashicons dashicons-update" aria-hidden="true"></span>%s %s</p>
             </div>',
             esc_html__('Pending updates:', 'easy-dashboard'),
             implode(', ', $items)
@@ -405,44 +409,23 @@ class EasyDashboard {
      */
     private function render_menu_box($menu_item, $is_small = false) {
         $url = $this->format_menu_link($menu_item[2]);
-        $raw_icon = isset($menu_item[6]) ? $menu_item[6] : '';
+        $icon_html = $this->get_menu_icon_html(isset($menu_item[6]) ? $menu_item[6] : '');
         $label = $this->get_menu_label($menu_item);
         $size_class = $is_small ? ' small' : '';
         $quick_actions = $this->get_menu_quick_actions($menu_item[2]);
-
-        // Use the WP Dashboard dashicon as the default fallback for missing icons
-        $dashicon_class = 'dashicons-dashboard';
-
-        if (is_string($raw_icon) && $raw_icon !== '') {
-            // Try to find a dashicons class in the string
-            if (preg_match('/(dashicons[-_\w]+)/', $raw_icon, $m)) {
-                $dashicon_class = $m[1];
-            } else {
-                // Treat the raw value as a possible class name (clean it)
-                $clean = preg_replace('/[^A-Za-z0-9_\- ]+/', '', $raw_icon);
-                if (trim($clean) !== '') {
-                    $dashicon_class = trim($clean);
-                }
-            }
-        }
-
-        // Check if dashicon_class contains data:image base64 and reset to dashboard icon
-        if (strpos($dashicon_class, 'base64') !== false) {
-            $dashicon_class = 'dashicons-dashboard';
-        }
 
         if (!empty($quick_actions)) {
             printf(
                 '<div class="easy-dashboard-box%s has-actions">
                     <a href="%s" class="easy-dashboard-box-main">
-                        <div class="dashicons easy-dashboard-icon %s" aria-hidden="true"></div>
+                        %s
                         <p class="easy-dashboard-label">%s</p>
                     </a>
                     <div class="easy-dashboard-actions">%s</div>
                 </div>',
                 esc_attr($size_class),
                 esc_url(admin_url($url)),
-                esc_attr($dashicon_class),
+                $icon_html,
                 esc_html($label),
                 $this->render_quick_actions_html($quick_actions)
             );
@@ -452,16 +435,43 @@ class EasyDashboard {
 
         printf(
             '<a href="%s" class="easy-dashboard-box%s">
-                <div class="dashicons easy-dashboard-icon %s" aria-hidden="true"></div>
+                %s
                 <p class="easy-dashboard-label">%s</p>
             </a>',
             esc_url(admin_url($url)),
             esc_attr($size_class),
-            esc_attr($dashicon_class),
+            $icon_html,
             esc_html($label)
         );
     }
     
+    /**
+     * Build the icon markup for a menu tile.
+     *
+     * Menu icons can be a Dashicons class, a base64 SVG data URI or an image
+     * URL, like in the WordPress admin menu. Anything else ("none", "div" or
+     * custom CSS hooks) falls back to the generic dashboard icon.
+     */
+    private function get_menu_icon_html($raw_icon) {
+        $raw_icon = is_string($raw_icon) ? trim($raw_icon) : '';
+
+        if (strpos($raw_icon, 'data:image/') === 0 || preg_match('#^(https?:)?//#', $raw_icon)) {
+            $src = esc_url($raw_icon, array('data', 'http', 'https'));
+
+            if ($src !== '') {
+                return sprintf('<img class="easy-dashboard-icon" src="%s" alt="" aria-hidden="true">', $src);
+            }
+        }
+
+        $dashicon_class = 'dashicons-dashboard';
+
+        if (preg_match('/^dashicons-[a-z0-9-]+$/', $raw_icon)) {
+            $dashicon_class = $raw_icon;
+        }
+
+        return sprintf('<div class="dashicons easy-dashboard-icon %s" aria-hidden="true"></div>', esc_attr($dashicon_class));
+    }
+
     /**
      * Get menu label
      */
@@ -503,6 +513,12 @@ class EasyDashboard {
      * Format menu link
      */
     private function format_menu_link($slug) {
+        // Same rule as the admin menu: slugs with a registered page callback
+        // (including "folder/file.php" ones) load through admin.php.
+        if (get_plugin_page_hook($slug, 'admin.php')) {
+            return 'admin.php?page=' . $slug;
+        }
+
         if (strpos($slug, '.php') !== false) {
             return $slug;
         }
@@ -590,21 +606,6 @@ class EasyDashboard {
     }
 
     /**
-     * Get a native localized post type label when available
-     */
-    private function get_post_type_action_label($post_type_object, $label_key, $fallback) {
-        if (
-            isset($post_type_object->labels) &&
-            isset($post_type_object->labels->{$label_key}) &&
-            !empty($post_type_object->labels->{$label_key})
-        ) {
-            return $post_type_object->labels->{$label_key};
-        }
-
-        return $fallback;
-    }
-
-    /**
      * Get the native localized add label for a post type
      */
     private function get_post_type_add_action_label($post_type_object, $fallback) {
@@ -674,7 +675,6 @@ class EasyDashboard {
 
         echo '<form method="post" action="options.php">';
         settings_fields('easy_dashboard_options');
-        do_settings_sections('easy_dashboard_options');
 
         echo '<table class="form-table">';
         echo '<tr valign="top">';
@@ -753,7 +753,7 @@ class EasyDashboard {
             'ed_color_scheme',
             array(
                 'type' => 'string',
-                'sanitize_callback' => 'sanitize_text_field',
+                'sanitize_callback' => array($this, 'sanitize_color_scheme'),
                 'default' => 'dark'
             )
         );
@@ -777,22 +777,21 @@ class EasyDashboard {
                 'default' => '#0f172a'
             )
         );
-        
-        add_settings_section(
-            'easy_dashboard_main',
-            __('Dashboard Settings', 'easy-dashboard'),
-            array($this, 'settings_section_callback'),
-            'easy_dashboard_options'
-        );
     }
-    
+
     /**
-     * Settings section callback
+     * Keep only known color scheme keys
      */
-    public function settings_section_callback() {
-        echo '<p>' . esc_html__('Customize the appearance and behavior of your Easy Dashboard.', 'easy-dashboard') . '</p>';
+    public function sanitize_color_scheme($scheme) {
+        $scheme = sanitize_key($scheme);
+
+        if ($scheme === 'custom' || array_key_exists($scheme, $this->get_color_schemes())) {
+            return $scheme;
+        }
+
+        return 'dark';
     }
-    
+
     /**
      * Get color scheme CSS variables
      */
