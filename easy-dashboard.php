@@ -5,7 +5,7 @@
  * Description: Refresh your WordPress dashboard with this new elegant, metro-based one.
  * Author: Marco Milesi
  * Author URI: https://marcomilesi.com
- * Version: 2.0.2
+ * Version: 2.0.3
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
@@ -25,7 +25,7 @@ class EasyDashboard {
     /**
      * Plugin version
      */
-    const VERSION = '2.0.2';
+    const VERSION = '2.0.3';
 
     /**
      * Plugin slug
@@ -83,6 +83,14 @@ class EasyDashboard {
         // The welcome page only exists in the site admin, not in the network
         // or user admin, which share the index.php screen.
         if (is_network_admin() || is_user_admin()) {
+            return;
+        }
+
+        // Only a plain visit to the dashboard is redirected. Plugins use
+        // index.php as an endpoint (e.g. Site Kit's "?action=googlesitekit_*"
+        // and OAuth callbacks), handled on hooks that run after this one.
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- no data is processed.
+        if (!empty($_GET) || (isset($_SERVER['REQUEST_METHOD']) && 'GET' !== $_SERVER['REQUEST_METHOD'])) {
             return;
         }
 
