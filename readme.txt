@@ -1,10 +1,10 @@
-=== Easy Dashboard ===
+=== Easy Dashboard – Clean Admin Welcome Screen ===
 Contributors: Milmor
 Tags: dashboard, easy, clean, tiny, panel
 Requires at least: 6.0
 Requires PHP: 7.4
 Tested up to: 7.2
-Stable tag: 2.0.3
+Stable tag: 2.0.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -72,6 +72,9 @@ Yes. Tiles and quick actions are rendered according to the current user's WordPr
 
 
 == Changelog ==
+
+= 2.0.4 2026-10-09 =
+* New plugin name and animated icon.
 
 = 2.0.3 2026-10-05 =
 * Fixed: conflict with plugins using the dashboard URL for their actions, such as Site Kit by Google sign-in.

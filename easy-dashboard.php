@@ -1,11 +1,11 @@
 <?php
 /**
- * Plugin Name: Easy Dashboard
+ * Plugin Name: Easy Dashboard – Clean Admin Welcome Screen
  * Plugin URI: https://www.marcomilesi.com
- * Description: Refresh your WordPress dashboard with this new elegant, metro-based one.
+ * Description: Replace the WordPress dashboard with a clean welcome screen: large tiles, branded header and quick access to your content.
  * Author: Marco Milesi
  * Author URI: https://marcomilesi.com
- * Version: 2.0.3
+ * Version: 2.0.4
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
@@ -25,7 +25,7 @@ class EasyDashboard {
     /**
      * Plugin version
      */
-    const VERSION = '2.0.3';
+    const VERSION = '2.0.4';
 
     /**
      * Plugin slug

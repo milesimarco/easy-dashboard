@@ -1,4 +1,4 @@
-# Easy Dashboard
+# Easy Dashboard – Clean Admin Welcome Screen
 
 A cleaner start for WordPress admin. Replace the default dashboard with a welcome page made of large tiles, a branded header and faster access to your content.
 
